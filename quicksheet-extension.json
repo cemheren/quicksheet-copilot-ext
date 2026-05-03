@@ -1,0 +1,8 @@
+{
+  "name": "copilot-ext",
+  "version": "0.1.0",
+  "prefix": "copilot",
+  "description": "GitHub Copilot AI integration for QuickSheet. Runs prompts through Copilot CLI and writes structured output to cells.",
+  "entry": "dotnet run --project copilot-ext.csproj",
+  "minProtocolVersion": 1
+}
