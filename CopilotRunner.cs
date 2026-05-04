@@ -36,6 +36,7 @@ static class CopilotRunner
             {
                 FileName = command,
                 UseShellExecute = false,
+                RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
@@ -45,6 +46,11 @@ static class CopilotRunner
 
             proc = Process.Start(psi);
             if (proc == null) return null;
+
+            // Close stdin immediately so the child process (and any grandchildren
+            // like MCP servers) cannot inherit and block on the extension's stdin
+            // pipe, which carries the QuickSheet JSON-lines protocol.
+            proc.StandardInput.Close();
 
             // Must drain both stdout and stderr concurrently. On Windows the
             // default pipe buffer is small (~4 KB); if the child process fills
