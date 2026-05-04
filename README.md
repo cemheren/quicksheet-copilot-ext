@@ -57,7 +57,34 @@ Cell references like `{A1::C10}` are expanded by QuickSheet before being sent to
 ## Building
 
 ```bash
-dotnet build
+dotnet build quicksheet-copilot-ext.sln
+```
+
+## Testing
+
+### Unit tests
+
+```bash
+dotnet test quicksheet-copilot-ext.sln
+```
+
+### E2E integration tests
+
+The project includes end-to-end tests that launch the extension as a child process
+(using the same `cmd.exe`/`bash` wrapper that QuickSheet uses) and verify the
+JSON-lines protocol over stdin/stdout. These are useful for diagnosing
+communication issues between QuickSheet and this extension, especially
+platform-specific problems like pipe buffering or stdin handle inheritance.
+
+```bash
+# Run the fast E2E tests (no Copilot CLI needed — tests init/register handshake only)
+dotnet test copilot-ext.Tests --filter "Category=E2E&Category!=E2E-Copilot"
+
+# Run the full E2E test that calls the Copilot CLI (requires `copilot` installed & authenticated)
+dotnet test copilot-ext.Tests --filter "Category=E2E-Copilot"
+
+# Run everything (unit + E2E)
+dotnet test quicksheet-copilot-ext.sln
 ```
 
 ## License
