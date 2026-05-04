@@ -71,6 +71,7 @@ static class CopilotRunner
                 return null;
             }
 
+            Log($"RETURN: {stdout}");
             return stdout;
         }
         catch (OperationCanceledException)
@@ -113,6 +114,7 @@ static class CopilotRunner
         }
     }
 
+    // TODO: move info logs to stdout or structured log channel once harness supports it
     private static void Log(string message)
     {
         Console.Error.WriteLine($"[CopilotRunner] {message}");
