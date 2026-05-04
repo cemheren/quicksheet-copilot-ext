@@ -53,8 +53,6 @@ class Program
 
     static async Task HandleActivate(ActivateMessage msg)
     {
-        // TODO: move info logs to stdout or structured log channel once harness supports it
-        Console.Error.WriteLine($"[Activate] START id={msg.Id} grid={msg.GridCols}x{msg.GridRows}");
         SendMessage(new { type = "status", id = msg.Id, message = "⏳ Asking Copilot..." });
 
         try
@@ -63,11 +61,8 @@ class Program
             string fullPrompt = PromptBuilder.Build(userPrompt, msg.GridCols, msg.GridRows);
 
             string? rawOutput = await CopilotRunner.RunAsync(fullPrompt);
-            Console.Error.WriteLine($"[Activate] id={msg.Id} result={(rawOutput == null ? "null" : $"{rawOutput.Length} chars")}");
-
             if (rawOutput == null)
             {
-                Console.Error.WriteLine($"[Activate] id={msg.Id} sending error (null result)");
                 SendMessage(new { type = "error", id = msg.Id, message = "Copilot CLI failed or not found. Ensure 'copilot' or 'gh' is installed and authenticated." });
                 return;
             }
@@ -78,12 +73,10 @@ class Program
                 cells.Add(new CellWrite { Row = 0, Col = 0, Value = rawOutput.Trim() });
             }
 
-            Console.Error.WriteLine($"[Activate] id={msg.Id} writing {cells.Count} cells");
             SendMessage(new WriteCellsMessage { Type = "write", Id = msg.Id, Cells = cells.ToArray() });
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Activate] id={msg.Id} exception: {ex.GetType().Name}: {ex.Message}");
             SendMessage(new { type = "error", id = msg.Id, message = ex.Message });
         }
     }
