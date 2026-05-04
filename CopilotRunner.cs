@@ -13,11 +13,11 @@ static class CopilotRunner
     public static async Task<string?> RunAsync(string prompt)
     {
         // Try `copilot -p` first (standalone Copilot CLI non-interactive mode)
-        var result = await TryRunAsync("copilot", new[] { "-p", prompt });
+        var result = await TryRunAsync("copilot", new[] { "-p", prompt, "--allow-all-tools" });
         if (result != null) return result;
 
         // Fall back to `gh copilot explain` which accepts a prompt argument
-        result = await TryRunAsync("gh", new[] { "copilot", "explain", prompt });
+        result = await TryRunAsync("gh", new[] { "copilot", "explain", prompt, "--allow-all-tools" });
         if (result != null) return result;
 
         return null;
