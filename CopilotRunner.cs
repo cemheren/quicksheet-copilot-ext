@@ -3,8 +3,9 @@ using System.Diagnostics;
 namespace CopilotExt;
 
 /// <summary>
-/// Executes the GitHub Copilot CLI (via `copilot -p` or `gh copilot`).
+/// Executes the GitHub Copilot CLI via `copilot -p`.
 /// Captures stdout and returns the raw output string.
+/// Logs diagnostics to stderr so they don't interfere with the JSON-lines protocol on stdout.
 /// </summary>
 static class CopilotRunner
 {
@@ -12,19 +13,13 @@ static class CopilotRunner
 
     public static async Task<string?> RunAsync(string prompt)
     {
-        // Try `copilot -p` first (standalone Copilot CLI non-interactive mode)
-        var result = await TryRunAsync("copilot", new[] { "-p", prompt, "--allow-all-tools" });
-        if (result != null) return result;
-
-        // Fall back to `gh copilot explain` which accepts a prompt argument
-        result = await TryRunAsync("gh", new[] { "copilot", "explain", prompt, "--allow-all-tools" });
-        if (result != null) return result;
-
-        return null;
+        return await TryRunAsync("copilot", new[] { "-p", prompt, "--allow-all-tools" });
     }
 
     private static async Task<string?> TryRunAsync(string command, string[] args)
     {
+        Log($"Starting: {command} {string.Join(" ", args)}");
+
         try
         {
             var psi = new ProcessStartInfo
@@ -39,25 +34,62 @@ static class CopilotRunner
                 psi.ArgumentList.Add(arg);
 
             using var proc = Process.Start(psi);
-            if (proc == null) return null;
+            if (proc == null)
+            {
+                Log($"Failed to start process: {command}");
+                return null;
+            }
+
+            Log($"Process started (PID {proc.Id})");
 
             using var cts = new CancellationTokenSource(TimeoutMs);
 
+            var stderrTask = proc.StandardError.ReadToEndAsync(cts.Token);
             string stdout = await proc.StandardOutput.ReadToEndAsync(cts.Token);
+            string stderr = await stderrTask;
             await proc.WaitForExitAsync(cts.Token);
 
-            if (proc.ExitCode != 0) return null;
-            if (string.IsNullOrWhiteSpace(stdout)) return null;
+            Log($"Process exited with code {proc.ExitCode}");
+
+            if (!string.IsNullOrWhiteSpace(stderr))
+                Log($"stderr: {stderr.Trim()}");
+
+            if (!string.IsNullOrWhiteSpace(stdout))
+                Log($"stdout ({stdout.Length} chars): {Truncate(stdout.Trim(), 200)}");
+
+            if (proc.ExitCode != 0)
+            {
+                Log($"Non-zero exit code {proc.ExitCode}, returning null");
+                return null;
+            }
+            if (string.IsNullOrWhiteSpace(stdout))
+            {
+                Log("Empty stdout, returning null");
+                return null;
+            }
 
             return stdout;
         }
         catch (OperationCanceledException)
         {
+            Log($"Process timed out after {TimeoutMs}ms");
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            Log($"Exception: {ex.GetType().Name}: {ex.Message}");
             return null;
         }
+    }
+
+    private static void Log(string message)
+    {
+        Console.Error.WriteLine($"[CopilotRunner] {message}");
+    }
+
+    private static string Truncate(string value, int maxLen)
+    {
+        if (value.Length <= maxLen) return value;
+        return value[..maxLen] + "…";
     }
 }
