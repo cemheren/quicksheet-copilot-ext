@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace CopilotExt;
 
@@ -21,7 +22,7 @@ static class CopilotRunner
         Log($"Starting: {command} {string.Join(" ", args)}");
 
         Process? proc = null;
-        string stdout = "";
+        var stdoutBuf = new StringBuilder();
 
         try
         {
@@ -47,10 +48,16 @@ static class CopilotRunner
 
             using var cts = new CancellationTokenSource(TimeoutMs);
 
-            var stderrTask = proc.StandardError.ReadToEndAsync(cts.Token);
-            stdout = await proc.StandardOutput.ReadToEndAsync(cts.Token);
-            string stderr = await stderrTask;
+            // Read incrementally so we capture partial output even if the process times out
+            var stdoutTask = ReadStreamAsync(proc.StandardOutput, stdoutBuf, cts.Token);
+            var stderrBuf = new StringBuilder();
+            var stderrTask = ReadStreamAsync(proc.StandardError, stderrBuf, cts.Token);
+
+            await Task.WhenAll(stdoutTask, stderrTask);
             await proc.WaitForExitAsync(cts.Token);
+
+            string stdout = stdoutBuf.ToString();
+            string stderr = stderrBuf.ToString();
 
             Log($"Process exited with code {proc.ExitCode}");
 
@@ -71,7 +78,6 @@ static class CopilotRunner
                 return null;
             }
 
-            Log($"RETURN: {stdout}");
             return stdout;
         }
         catch (OperationCanceledException)
@@ -79,11 +85,13 @@ static class CopilotRunner
             Log($"Process timed out after {TimeoutMs}ms");
             TryKillProcess(proc);
 
-            if (!string.IsNullOrWhiteSpace(stdout))
+            string captured = stdoutBuf.ToString();
+            if (!string.IsNullOrWhiteSpace(captured))
             {
-                Log($"Returning captured stdout despite timeout ({stdout.Length} chars): {Truncate(stdout.Trim(), 200)}");
-                return stdout;
+                Log($"Returning partial stdout despite timeout ({captured.Length} chars): {Truncate(captured.Trim(), 200)}");
+                return captured;
             }
+            Log("No stdout captured before timeout");
             return null;
         }
         catch (Exception ex)
@@ -94,6 +102,16 @@ static class CopilotRunner
         finally
         {
             proc?.Dispose();
+        }
+    }
+
+    private static async Task ReadStreamAsync(System.IO.StreamReader reader, StringBuilder buffer, CancellationToken ct)
+    {
+        var buf = new char[4096];
+        int read;
+        while ((read = await reader.ReadAsync(buf, ct)) > 0)
+        {
+            buffer.Append(buf, 0, read);
         }
     }
 
