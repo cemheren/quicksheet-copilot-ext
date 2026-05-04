@@ -12,19 +12,24 @@ static class CopilotRunner
 
     public static async Task<string?> RunAsync(string prompt)
     {
+        // Use a single timeout budget shared across all fallback attempts
+        // so worst-case wait is always TimeoutMs, not TimeoutMs × N.
+        using var cts = new CancellationTokenSource(TimeoutMs);
+
         // Try `copilot -p` first (standalone Copilot CLI non-interactive mode)
-        var result = await TryRunAsync("copilot", new[] { "-p", prompt, "--allow-all-tools" });
+        var result = await TryRunAsync("copilot", new[] { "-p", prompt, "--allow-all-tools" }, cts.Token);
         if (result != null) return result;
 
         // Fall back to `gh copilot explain` which accepts a prompt argument
-        result = await TryRunAsync("gh", new[] { "copilot", "explain", prompt, "--allow-all-tools" });
+        result = await TryRunAsync("gh", new[] { "copilot", "explain", prompt, "--allow-all-tools" }, cts.Token);
         if (result != null) return result;
 
         return null;
     }
 
-    private static async Task<string?> TryRunAsync(string command, string[] args)
+    private static async Task<string?> TryRunAsync(string command, string[] args, CancellationToken ct)
     {
+        Process? proc = null;
         try
         {
             var psi = new ProcessStartInfo
@@ -38,13 +43,20 @@ static class CopilotRunner
             foreach (var arg in args)
                 psi.ArgumentList.Add(arg);
 
-            using var proc = Process.Start(psi);
+            proc = Process.Start(psi);
             if (proc == null) return null;
 
-            using var cts = new CancellationTokenSource(TimeoutMs);
+            // Must drain both stdout and stderr concurrently. On Windows the
+            // default pipe buffer is small (~4 KB); if the child process fills
+            // stderr without a reader the write blocks, stdout stalls, and we
+            // hit the timeout.
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+            var stderrTask = proc.StandardError.ReadToEndAsync(ct);
 
-            string stdout = await proc.StandardOutput.ReadToEndAsync(cts.Token);
-            await proc.WaitForExitAsync(cts.Token);
+            await Task.WhenAll(stdoutTask, stderrTask);
+            string stdout = stdoutTask.Result;
+
+            await proc.WaitForExitAsync(ct);
 
             if (proc.ExitCode != 0) return null;
             if (string.IsNullOrWhiteSpace(stdout)) return null;
@@ -53,11 +65,23 @@ static class CopilotRunner
         }
         catch (OperationCanceledException)
         {
+            KillSafe(proc);
             return null;
         }
         catch
         {
+            KillSafe(proc);
             return null;
         }
+        finally
+        {
+            proc?.Dispose();
+        }
+    }
+
+    private static void KillSafe(Process? proc)
+    {
+        try { if (proc is { HasExited: false }) proc.Kill(entireProcessTree: true); }
+        catch { }
     }
 }
