@@ -8,7 +8,7 @@ namespace CopilotExt;
 /// </summary>
 static class CopilotRunner
 {
-    private const int TimeoutMs = 600_000; // 10 minutes
+    private const int TimeoutMs = 120_000; // 2 minutes
 
     public static async Task<string?> RunAsync(string prompt)
     {

@@ -63,7 +63,7 @@ class Program
             string? rawOutput = await CopilotRunner.RunAsync(fullPrompt);
             if (rawOutput == null)
             {
-                SendMessage(new { type = "error", id = msg.Id, message = "Copilot CLI failed or not found. Ensure 'copilot' or 'gh' is installed and authenticated." });
+                SendMessage(new { type = "error", id = msg.Id, message = "Copilot CLI timed out or failed." });
                 return;
             }
 
