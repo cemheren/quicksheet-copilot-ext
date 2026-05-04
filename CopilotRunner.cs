@@ -20,6 +20,9 @@ static class CopilotRunner
     {
         Log($"Starting: {command} {string.Join(" ", args)}");
 
+        Process? proc = null;
+        string stdout = "";
+
         try
         {
             var psi = new ProcessStartInfo
@@ -33,7 +36,7 @@ static class CopilotRunner
             foreach (var arg in args)
                 psi.ArgumentList.Add(arg);
 
-            using var proc = Process.Start(psi);
+            proc = Process.Start(psi);
             if (proc == null)
             {
                 Log($"Failed to start process: {command}");
@@ -45,7 +48,7 @@ static class CopilotRunner
             using var cts = new CancellationTokenSource(TimeoutMs);
 
             var stderrTask = proc.StandardError.ReadToEndAsync(cts.Token);
-            string stdout = await proc.StandardOutput.ReadToEndAsync(cts.Token);
+            stdout = await proc.StandardOutput.ReadToEndAsync(cts.Token);
             string stderr = await stderrTask;
             await proc.WaitForExitAsync(cts.Token);
 
@@ -73,12 +76,40 @@ static class CopilotRunner
         catch (OperationCanceledException)
         {
             Log($"Process timed out after {TimeoutMs}ms");
+            TryKillProcess(proc);
+
+            if (!string.IsNullOrWhiteSpace(stdout))
+            {
+                Log($"Returning captured stdout despite timeout ({stdout.Length} chars): {Truncate(stdout.Trim(), 200)}");
+                return stdout;
+            }
             return null;
         }
         catch (Exception ex)
         {
             Log($"Exception: {ex.GetType().Name}: {ex.Message}");
             return null;
+        }
+        finally
+        {
+            proc?.Dispose();
+        }
+    }
+
+    private static void TryKillProcess(Process? proc)
+    {
+        if (proc == null) return;
+        try
+        {
+            if (!proc.HasExited)
+            {
+                proc.Kill(entireProcessTree: true);
+                Log("Process killed");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Failed to kill process: {ex.Message}");
         }
     }
 
