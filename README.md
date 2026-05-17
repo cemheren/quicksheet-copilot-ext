@@ -38,6 +38,83 @@ copilot: summarize this data {B1::E50}, 3, 1
 
 Cell references like `{A1::C10}` are expanded by QuickSheet before being sent to the extension, so Copilot receives the actual cell contents as context.
 
+## Use Cases
+
+### Data generation
+
+Instantly populate a grid with realistic sample data — great for prototypes, demos, or testing:
+
+```
+copilot: 10 user records with first name last name email city, 4, 10
+copilot: 8 products with name SKU price stock quantity, 4, 8
+copilot: 6 project tasks with title priority status due-date, 4, 6
+```
+
+### Technology research & comparison
+
+Ask Copilot to populate a comparison table directly in your spreadsheet:
+
+```
+copilot: compare PostgreSQL MySQL SQLite on speed scalability ease column headers, 4, 4
+copilot: compare React Vue Angular on performance learning-curve ecosystem maturity, 4, 4
+copilot: list 5 message queues with name pros cons throughput, 4, 5
+```
+
+### Learning & quizzes
+
+Build interactive study sheets or generate quiz material on any topic:
+
+```
+copilot: 5 Python beginner questions with question and answer in two columns, 2, 5
+copilot: explain Big-O complexity for common sort algorithms as name and notation, 2, 7
+copilot: 6 SQL exercises with task and sample query, 2, 6
+```
+
+### Meeting & planning templates
+
+Generate structured agenda items, standup templates, or retro boards:
+
+```
+copilot: 8 sprint planning agenda items as task and duration, 2, 8
+copilot: standup template for 5 team members with Yesterday Today Blocker columns, 4, 5
+copilot: 6 retrospective items as category and insight, 2, 6
+```
+
+### Summarize your own data
+
+Use `{A1::C10}` cell-range references to feed existing cell contents to Copilot:
+
+```
+copilot: extract 5 action items from {A1::A30}, 1, 5
+copilot: summarize {B2::D20} in 3 key insights, 1, 3
+copilot: identify patterns in this data {A1::F50}, 2, 6
+```
+
+### Developer cheat sheets
+
+Keep quick reference material on your desktop alongside your work:
+
+```
+copilot: common git commands with command and what it does, 2, 12
+copilot: 8 Python debugging tips as problem and fix, 2, 8
+copilot: HTTP status codes 200-599 with code and meaning, 2, 10
+```
+
+### Financial quick tables
+
+Generate salary benchmarks, budget templates, or investment summaries:
+
+```
+copilot: software engineer salary ranges by level as title and USD range, 2, 6
+copilot: 8 personal budget categories with name and recommended percentage, 2, 8
+copilot: 5 investment types with name risk-level typical-return, 3, 5
+```
+
+### Full dashboard template
+
+A ready-made multi-section dashboard is in the QuickSheet repo at
+[`examples/copilot-dashboard.csv`](https://github.com/cemheren/QuickSheet/blob/main/examples/copilot-dashboard.csv) — it demonstrates data generation, research, learning, planning, code help, and finance sections all in one grid.
+
 ## Requirements
 
 - [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli) (`copilot`) installed and authenticated, OR
