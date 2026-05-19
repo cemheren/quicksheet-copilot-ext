@@ -7,7 +7,7 @@ A [QuickSheet](https://github.com/cemheren/QuickSheet) extension that integrates
 In QuickSheet, add an `ext:` cell to install this extension:
 
 ```
-ext: github:cemheren/quicksheet-copilot-ext
+ext: github:Deskworks/quicksheet-copilot-ext
 ```
 
 Then use the `copilot:` prefix in any cell:
